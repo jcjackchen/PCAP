@@ -158,6 +158,10 @@ class PacketUtils:
     # "FIREWALL" if it is behind the Great Firewall
     def ping(self, target):
         # self.send_msg([triggerfetch], dst=target, syn=True)
+        sport = random.randint(2000, 32000)
+        payload = "GET / HTTP/1.1\r\nHost:www.google.com"
+        p = send_pkt(self, payload, 32, "SYN", None, None, sport)
+        print p
         return "NEED TO IMPLEMENT"
 
     # Format is
