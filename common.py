@@ -186,7 +186,7 @@ class PacketUtils:
                 break
             f += [q[TCP].seq]
 
-        if len(set(f)) > 1 and q[TCP].flags == 4:
+        if len(set(f)) > 1 or q[TCP].flags == 4:
             return "FIREWALL"
         else:
             return "LIVE"
