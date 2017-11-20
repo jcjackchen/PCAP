@@ -14,7 +14,7 @@ maxhop = 25
 # A request that will trigger the great firewall but will NOT cause
 # the web server to process the connection.  You probably want it here
 
-triggerfetch = """YOU MIGHT WANT SOMETHING HERE"""
+triggerfetch = "GET / HTTP/1.1\r\nHost:www.google.com\r\n\r\n"
 
 # A couple useful functions that take scapy packets
 def isRST(p):
@@ -159,10 +159,37 @@ class PacketUtils:
     def ping(self, target):
         # self.send_msg([triggerfetch], dst=target, syn=True)
         sport = random.randint(2000, 32000)
-        payload = "GET / HTTP/1.1\r\nHost:www.google.com"
-        p = send_pkt(self, payload, 32, "SYN", None, None, sport)
-        print p
-        return "NEED TO IMPLEMENT"
+        p = self.send_pkt(None, 64, "S", None, None, sport)
+        q = self.get_pkt()
+        if (q==None):
+            return "DEAD"
+
+        seq = q[TCP].seq
+        ack = q[TCP].ack
+        assert(p[TCP].seq+1 == q[TCP].ack)
+        assert(q[TCP].flags == 18)
+
+        p = self.send_pkt(None,64,"A",ack,seq+1, sport)
+        p = self.send_pkt(triggerfetch, 64, "PA",ack,seq+1, sport)
+
+        q = self.get_pkt()
+
+        if (q == None):
+            return "DEAD"
+        elif(q[TCP].flags == 4):
+            return "FIREWALL"
+
+        f = []
+        while(q[TCP].flags == 18):
+            q = self.get_pkt()
+            if (q == None):
+                break
+            f += [q[TCP].seq]
+
+        if len(set(f)) > 1 and q[TCP].flags == 4:
+            return "FIREWALL"
+        else:
+            return "LIVE"
 
     # Format is
     # ([], [])
