@@ -173,12 +173,12 @@ class PacketUtils:
         p = self.send_pkt(triggerfetch, 64, "PA",ack,seq+1, sport)
 
         q = self.get_pkt()
-
+        
         if (q == None):
             return "DEAD"
         elif(q[TCP].flags == 4):
             return "FIREWALL"
-
+    
         f = []
         while(q[TCP].flags == 18):
             q = self.get_pkt()
@@ -198,4 +198,46 @@ class PacketUtils:
     # The second list is T/F 
     # if there is a RST back for that particular request
     def traceroute(self, target, hops):
-        return "NEED TO IMPLEMENT"
+        ips = []
+        rst = []
+
+        ttl = 1
+        while(ttl<hops):
+
+             # Normal Handshake with the server
+            p = self.send_pkt(None,64,"S",None)
+            sport = p[TCP].sport
+            q = self.get_pkt()
+
+            while(q == None):
+                p = self.send_pkt(None,64,"S",None)
+                sport = p[TCP].sport
+                q = self.get_pkt()
+                
+            seq = q[TCP].seq
+            ack = q[TCP].ack
+            assert(p[TCP].seq+1 == q[TCP].ack)
+            assert(q[TCP].flags == 18)
+
+            for i in range(3):
+                p = self.send_pkt(triggerfetch,ttl,"PA",ack,seq+1,sport)
+                
+            q = self.get_pkt()
+
+            ips += [q[IP].src]
+
+            print(ttl)
+
+            if (ICMP not in q):
+                if (q[TCP].flags == 4):
+                    rst += [True]
+                else:
+                    rst += [False]
+            elif (q[ICMP].type == 11):
+                rst += [False]
+                
+            while(q!=None):
+                q = self.get_pkt()
+                
+            ttl += 1
+        return (ips,rst)
