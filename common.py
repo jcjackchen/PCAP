@@ -209,10 +209,10 @@ class PacketUtils:
             sport = p[TCP].sport
             q = self.get_pkt()
 
-            while(q == None):
-                p = self.send_pkt(None,64,"S",None)
-                sport = p[TCP].sport
-                q = self.get_pkt()
+            # while(q == None):
+            #     p = self.send_pkt(None,64,"S",None)
+            #     sport = p[TCP].sport
+            #     q = self.get_pkt()
                 
             seq = q[TCP].seq
             ack = q[TCP].ack
@@ -221,13 +221,11 @@ class PacketUtils:
 
             for i in range(3):
                 p = self.send_pkt(triggerfetch,ttl,"PA",ack,seq+1,sport)
-                
+            
             q = self.get_pkt()
 
+
             ips += [q[IP].src]
-
-            print(ttl)
-
             if (ICMP not in q):
                 if (q[TCP].flags == 4):
                     rst += [True]
@@ -237,7 +235,7 @@ class PacketUtils:
                 rst += [False]
                 
             while(q!=None):
-                q = self.get_pkt()
+                q = self.get_pkt(0)
                 
             ttl += 1
         return (ips,rst)

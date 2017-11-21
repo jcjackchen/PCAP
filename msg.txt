@@ -1,1 +1,1 @@
-Put msg in here
+GET / HTTP/1.1\r\nHOST:WWW.google.com\r\n\r\n
