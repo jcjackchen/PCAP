@@ -1,2 +1,4 @@
 Describe (in 2-3 paragraphs) your evasion strategy:
+Because we know that the firewall only detects and gets triggered on certain keywords, we send our payload to the server by sending different "fragments", in this way, we bypass the "blacklisting" block of the firewall.
+I split my payload by "." and send each fragments to the server, seq in each request is the previous ack + len(current payload). After I send all the requests, I check to see the response from the server that ack the last seq that I sent. If there's no RST flags and is a real server response, we bypassed the firewall.
 
