@@ -151,7 +151,47 @@ class PacketUtils:
     # ttl is a ttl which triggers the Great Firewall but is before the
     # server itself (from a previous traceroute incantation
     def evade(self, target, msg, ttl):
-        return "NEED TO IMPLEMENT"
+
+        # Normal Handshake with the server
+        p = self.send_pkt(None,64,"S",None)
+        sport = p[TCP].sport
+        q = self.get_pkt()
+
+        # Re SYN with the server
+        while(q == None or isICMP(q) or q[TCP].ack != p[TCP].seq+1):
+            if (q == None):
+                p = self.send_pkt(None,64,"S",None)
+                sport = p[TCP].sport
+                q = self.get_pkt()
+
+        # SYN/ACK sanity check
+        seq = q[TCP].seq
+        ack = q[TCP].ack
+        assert(p[TCP].seq+1 == q[TCP].ack)
+        assert(q[TCP].flags == 18)
+
+        # ACK the SYN/ACK
+        p = self.send_pkt(None,64,"A",ack,seq+1,sport)
+
+        msgs = msg.split(".") 
+        for m in msgs:
+            p = self.send_pkt(m+".",64,"PA",ack,seq+1,sport)
+            ack += len(m) 
+
+        p = self.send_pkt("\r\n",64,"PA",ack,seq+1,sport)
+        q = self.get_pkt()
+        pkts = []
+        wait = 5
+        while (q != None):
+            pkts += [q]
+            q = self.get_pkt(wait)
+                
+        loads = ""
+        for pkt in pkts:
+            if 'Raw' in pkt and pkt[TCP].ack == ack+1:
+                loads += pkt[Raw].load
+    
+        return loads
         
     # Returns "DEAD" if server isn't alive,
     # "LIVE" if teh server is alive,
@@ -186,7 +226,7 @@ class PacketUtils:
                 break
             f += [q[TCP].seq]
 
-        if len(set(f)) > 1 or q[TCP].flags == 4:
+        if len(set(f)) > 1 or isRST(q):
             return "FIREWALL"
         else:
             return "LIVE"
@@ -202,40 +242,59 @@ class PacketUtils:
         rst = []
 
         ttl = 1
-        while(ttl<hops):
+        while(ttl<=hops):
 
-             # Normal Handshake with the server
+            # Normal Handshake with the server
             p = self.send_pkt(None,64,"S",None)
             sport = p[TCP].sport
             q = self.get_pkt()
-
-            # while(q == None):
-            #     p = self.send_pkt(None,64,"S",None)
-            #     sport = p[TCP].sport
-            #     q = self.get_pkt()
                 
+            # Re SYN with the server
+            while(q == None or isICMP(q) or q[TCP].ack != p[TCP].seq+1):
+                if (q == None):
+                    p = self.send_pkt(None,64,"S",None)
+                    sport = p[TCP].sport
+                q = self.get_pkt()
+
+            # SYN/ACK sanity check    
             seq = q[TCP].seq
             ack = q[TCP].ack
             assert(p[TCP].seq+1 == q[TCP].ack)
             assert(q[TCP].flags == 18)
+                    
+            # ACK the SYN/ACK
+            p = self.send_pkt(None,64,"A",ack,seq+1,sport)
 
+            #Send 3 copies of the packet
             for i in range(3):
                 p = self.send_pkt(triggerfetch,ttl,"PA",ack,seq+1,sport)
-            
-            q = self.get_pkt()
 
+            #GET all the packets and EMPTY the Queue
+            wait = 5
+            pkts = []
+            while(q != None):
+                q = self.get_pkt(wait)
+                if q != None:
+                    pkts += [q]
 
-            ips += [q[IP].src]
-            if (ICMP not in q):
-                if (q[TCP].flags == 4):
-                    rst += [True]
-                else:
-                    rst += [False]
-            elif (q[ICMP].type == 11):
-                rst += [False]
-                
+                if wait != 0:
+                    wait -= 1
+
+            ip = None
+            tf = False
+            #Examine the received pkts
+            for pkt in pkts:
+                if isTimeExceeded(pkt) and ip == None:
+                    ip = pkt[IP].src
+                elif isRST(pkt):
+                    tf = True
+
+            ips += [ip]
+            rst += [tf]
+
+            #Empty the Queue again    
             while(q!=None):
-                q = self.get_pkt(0)
+                q = self.get_pkt(1)
                 
             ttl += 1
         return (ips,rst)

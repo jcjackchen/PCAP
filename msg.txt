@@ -1,1 +1,4 @@
-GET / HTTP/1.1\r\nHOST:WWW.google.com\r\n\r\n
+GET / HTTP/1.1
+Host:www.google.com
+
+
