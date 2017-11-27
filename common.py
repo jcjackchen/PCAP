@@ -216,20 +216,18 @@ class PacketUtils:
         
         if (q == None):
             return "DEAD"
-        elif(q[TCP].flags == 4):
+        elif(isRST(q)):
             return "FIREWALL"
     
-        f = []
-        while(q[TCP].flags == 18):
+        
+        while(q != None):
             q = self.get_pkt()
             if (q == None):
                 break
-            f += [q[TCP].seq]
+            elif(isRST(q)):
+                return "FIREWALL"
 
-        if len(set(f)) > 1 or isRST(q):
-            return "FIREWALL"
-        else:
-            return "LIVE"
+        return "LIVE"
 
     # Format is
     # ([], [])
